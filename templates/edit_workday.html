@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Modifier le Jour de Travail</h2>
+<form action="{{ url_for('edit_workday', workday_id=workday.id) }}" method="post">
+    <div class="form-group">
+        <label for="employee_id">Employé:</label>
+        <select name="employee_id" id="employee_id" required>
+            {% for employee in employees %}
+                <option value="{{ employee.id }}" {% if workday.employee_id == employee.id %}selected{% endif %}>{{ employee.full_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="work_date">Date de Travail:</label>
+        <input type="date" id="work_date" name="work_date" value="{{ workday.work_date.strftime('%Y-%m-%d') }}" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="hours_worked">Heures Travaillées:</label>
+        <input type="number" id="hours_worked" name="hours_worked" value="{{ workday.hours_worked }}" required>
+    </div>
+    
+    <div class="form-group">
+        <label>Type de Jour de Travail:</label>
+        <div class="radio-options">
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="regular_day" name="workday_type" value="regular" {% if not workday.is_transport_day and not workday.is_vacation_day %}checked{% endif %}>
+                    Jour de Travail Régulier
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="transport_day" name="workday_type" value="transport" {% if workday.is_transport_day %}checked{% endif %}>
+                    Jour de Transport <span class="hint">(Toujours payé au taux horaire normal)</span>
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="vacation_day" name="workday_type" value="vacation" {% if workday.is_vacation_day and not workday.is_paid_vacation %}checked{% endif %}>
+                    Jour de Congé <span class="hint">(Déduit 1 jour des jours de congé de l'employé)</span>
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="paid_vacation" name="workday_type" value="paid_vacation" {% if workday.is_paid_vacation %}checked{% endif %}>
+                    Jour férié <span class="hint">(Jour férié sans déduire les jours de congé)</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="save-button">Enregistrer</button>
+        <a href="{{ url_for('list_workdays') }}" class="cancel-button">Annuler</a>
+    </div>
+</form>
+{% endblock %}

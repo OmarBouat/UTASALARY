@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="login-container">
+    <h2>Système de Gestion de Salaires</h2>
+    <p>Veuillez entrer le mot de passe pour continuer</p>
+
+    {% if error %}
+    <div class="error-message">
+        {% if error == 'Incorrect password' %}
+            Mot de passe incorrect
+        {% else %}
+            {{ error }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('login') }}" method="post">
+        <div class="form-group">
+            <label for="password">Mot de passe:</label>
+            <input type="password" id="password" name="password" required autofocus>
+        </div>
+        
+        <button type="submit" class="submit-button">Connexion</button>
+    </form>
+</div>
+{% endblock %}

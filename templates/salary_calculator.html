@@ -1,0 +1,1050 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="salary-calculator-container">
+    <div class="page-header">
+        <h2>Calculateur de Salaire</h2>
+        <p class="subtitle">Générer et visualiser les salaires mensuels des employés</p>
+    </div>
+
+    <!-- Formulaire de sélection -->
+    <div class="selection-form">
+        <form action="{{ url_for('salary_calculator') }}" method="post">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="employee_id">Employé</label>
+                    <select name="employee_id" id="employee_id" required>
+                        {% for employee in employees %}
+                            <option value="{{ employee.id }}" {% if selected_employee and selected_employee.id == employee.id %}selected{% endif %}>{{ employee.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="month">Mois</label>
+                    <select name="month" id="month" required>
+                        {% for month_num, month_name in months %}
+                            <option value="{{ month_num }}" {% if selected_month == month_num %}selected{% endif %}>{{ month_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="year">Année</label>
+                    <select name="year" id="year" required>
+                        {% for year_num in years %}
+                            <option value="{{ year_num }}" {% if selected_year == year_num %}selected{% endif %}>{{ year_num }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-action">
+                    <button type="submit" class="calculate-button">
+                        <i class="fas fa-calculator"></i> Calculer
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_employee and total_hours is not none %}
+    <!-- Résultats du calcul -->
+    <div class="results-container">
+        <div class="employee-header">
+            <div class="employee-info">
+                <h3>{{ selected_employee.full_name }}</h3>
+                <div class="period-badge">{{ months[selected_month-1][1] }} {{ selected_year }}</div>
+            </div>
+            <div class="salary-badge">
+                <div class="salary-amount">{{ '%d'|format(total_salary*1000) }}</div>
+                <div class="salary-currency">millimes</div>
+            </div>
+        </div>
+
+        <!-- Résumé des heures -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ total_hours }}</div>
+                    <div class="stat-label">Heures totales</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ regular_hours }}</div>
+                    <div class="stat-label">Heures normales</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon overtime">
+                    <i class="fas fa-business-time"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ overtime_hours_125 }}</div>
+                    <div class="stat-label">H.S. (125%)</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon overtime-plus">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ overtime_hours_150 }}</div>
+                    <div class="stat-label">H.S. (150%)</div>
+                </div>
+            </div>
+            
+            {% if transport_hours %}
+            <div class="stat-card">
+                <div class="stat-icon transport">
+                    <i class="fas fa-bus"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ transport_hours }}</div>
+                    <div class="stat-label">Transport</div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if vacation_hours %}
+            <div class="stat-card">
+                <div class="stat-icon vacation">
+                    <i class="fas fa-umbrella-beach"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ vacation_hours }}</div>
+                    <div class="stat-label">Congés</div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if paid_vacation_hours %}
+            <div class="stat-card">
+                <div class="stat-icon paid-vacation">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ paid_vacation_hours }}</div>
+                    <div class="stat-label">Jour férié</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Onglets pour les détails -->
+        <div class="details-tabs">
+            <div class="tab-navigation">
+                <button class="tab-button active" data-tab="weekly">Semaines</button>
+                <button class="tab-button" data-tab="daily">Jours</button>
+                {% if transport_hours or vacation_hours or paid_vacation_hours %}
+                <button class="tab-button" data-tab="special">Spéciaux</button>
+                {% endif %}
+            </div>
+
+            <!-- Tab 1: Répartition hebdomadaire -->
+            <div class="tab-content active" id="weekly">
+                <h4>Détails par Semaine</h4>
+                <div class="responsive-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Semaine</th>
+                                <th class="text-center">Heures</th>
+                                <th class="text-center">Normal</th>
+                                <th class="text-center">125%</th>
+                                <th class="text-center">150%</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for week in salary_details %}
+                            <tr class="expandable-row" data-week="{{ loop.index }}">
+                                <td>{{ week.start_date.strftime('%d/%m') }} - {{ week.end_date.strftime('%d/%m') }}</td>
+                                <td class="text-center">{{ week.hours }}</td>
+                                <td class="text-center">{{ week.regular_hours }}</td>
+                                <td class="text-center">{{ week.overtime_hours_125 }}</td>
+                                <td class="text-center">{{ week.overtime_hours_150 }}</td>
+                                <td class="text-right">{{ '%d'|format(week.salary*1000) }}</td>
+                            </tr>
+                            <tr class="week-details" id="week-details-{{ loop.index }}">
+                                <td colspan="6">
+                                    <div class="detail-days-grid">
+                                        {% for day in week.days %}
+                                        <div class="detail-day {% if day.work_date.weekday() == 6 %}sunday{% endif %}">
+                                            <div class="day-date">{{ day.work_date.strftime('%a %d/%m') }}</div>
+                                            <div class="day-hours">{{ day.hours_worked }}h</div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Répartition journalière -->
+            <div class="tab-content" id="daily">
+                <h4>Détails par Jour</h4>
+                <div class="day-cards">
+                    {% for workday in workdays %}
+                    <div class="day-card {% if workday.work_date.weekday() == 6 %}sunday{% elif workday.is_transport_day %}transport{% elif workday.is_paid_vacation %}paid-vacation{% elif workday.is_vacation_day %}vacation{% endif %}">
+                        <div class="day-header">
+                            <div class="day-date">{{ workday.work_date.strftime('%A %d %b') }}</div>
+                            <div class="day-type">
+                                {% if workday.is_transport_day %}
+                                    <span class="type-badge transport"><i class="fas fa-bus"></i> Transport</span>
+                                {% elif workday.is_paid_vacation %}
+                                    <span class="type-badge paid-vacation"><i class="fas fa-wallet"></i> Jour férié</span>
+                                {% elif workday.is_vacation_day %}
+                                    <span class="type-badge vacation"><i class="fas fa-umbrella-beach"></i> Congés</span>
+                                {% elif workday.work_date.weekday() == 6 %}
+                                    <span class="type-badge sunday"><i class="fas fa-sun"></i> Dimanche</span>
+                                {% else %}
+                                    <span class="type-badge normal"><i class="fas fa-briefcase"></i> Normal</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="day-hours">{{ workday.hours_worked }} heures</div>
+                        <div class="day-salary">
+                            {% if workday.work_date.weekday() == 6 %}
+                                <!-- Dimanche: appliquer le 1.5x -->
+                                {{ '%d'|format(workday.hours_worked * selected_employee.hourly_salary * 1.5 * 1000) }} millimes
+                                <span class="sunday-bonus">(+50% dimanche)</span>
+                            {% else %}
+                                {{ '%d'|format(workday.hours_worked * selected_employee.hourly_salary * 1000) }} millimes
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Tab 3: Types spéciaux -->
+            {% if transport_hours or vacation_hours or paid_vacation_hours %}
+            <div class="tab-content" id="special">
+                <h4>Types Spéciaux</h4>
+                
+                {% if transport_hours %}
+                <div class="special-section transport-section">
+                    <h5><i class="fas fa-bus"></i> Transport</h5>
+                    <div class="special-data">
+                        <div class="data-item">
+                            <div class="data-label">Heures</div>
+                            <div class="data-value">{{ transport_hours }}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Taux</div>
+                            <div class="data-value">{{ '%d'|format(selected_employee.hourly_salary*1000) }}</div>
+                        </div>
+                        <div class="data-item total">
+                            <div class="data-label">Total</div>
+                            <div class="data-value">{{ '%d'|format(transport_pay*1000) }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if vacation_hours %}
+                <div class="special-section vacation-section">
+                    <h5><i class="fas fa-umbrella-beach"></i> Congés</h5>
+                    <div class="special-data">
+                        <div class="data-item">
+                            <div class="data-label">Heures</div>
+                            <div class="data-value">{{ vacation_hours }}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Taux</div>
+                            <div class="data-value">{{ '%d'|format(selected_employee.hourly_salary*1000) }}</div>
+                        </div>
+                        <div class="data-item total">
+                            <div class="data-label">Total</div>
+                            <div class="data-value">{{ '%d'|format(vacation_pay*1000) }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if paid_vacation_hours %}
+                <div class="special-section paid-vacation-section">
+                    <h5><i class="fas fa-wallet"></i> Jour férié</h5>
+                    <div class="special-data">
+                        <div class="data-item">
+                            <div class="data-label">Heures</div>
+                            <div class="data-value">{{ paid_vacation_hours }}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">Taux</div>
+                            <div class="data-value">{{ '%d'|format(selected_employee.hourly_salary*1000) }}</div>
+                        </div>
+                        <div class="data-item total">
+                            <div class="data-label">Total</div>
+                            <div class="data-value">{{ '%d'|format(paid_vacation_pay*1000) }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="report-actions">
+            <button class="action-button print-button" onclick="window.print();">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <button class="action-button export-button" id="exportPDF">
+                <i class="fas fa-file-pdf"></i> Exporter PDF
+            </button>
+        </div>
+    </div>
+    {% elif selected_employee %}
+    <!-- Aucun résultat trouvé -->
+    <div class="no-results">
+        <div class="no-results-icon">
+            <i class="fas fa-search"></i>
+        </div>
+        <h3>Aucun jour de travail trouvé</h3>
+        <p>Aucune donnée disponible pour {{ selected_employee.full_name }} en {{ months[selected_month-1][1] }} {{ selected_year }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* Nouvelles styles pour la page calculateur */
+.salary-calculator-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.subtitle {
+    color: #6c757d;
+    margin-top: -0.5rem;
+}
+
+/* Formulaire de sélection */
+.selection-form {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+.selection-form label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.selection-form select {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    font-size: 1rem;
+    background-color: #f8f9fa;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.selection-form select:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+    outline: none;
+}
+
+.calculate-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.calculate-button:hover {
+    background-color: #3e8e41;
+    transform: translateY(-2px);
+}
+
+.calculate-button:active {
+    transform: translateY(0);
+}
+
+/* En-tête des résultats */
+.results-container {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.employee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.employee-info h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #212529;
+}
+
+.period-badge {
+    display: inline-block;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.salary-badge {
+    background-color: #4CAF50;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    text-align: right;
+}
+
+.salary-amount {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.salary-currency {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Cartes de statistiques */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: #fff;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #e9ecef;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    margin-right: 1rem;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 1.25rem;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #212529;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Couleurs différentes pour les icônes de stat */
+.stat-icon.overtime {
+    background-color: #ff9800;
+}
+
+.stat-icon.overtime-plus {
+    background-color: #f44336;
+}
+
+.stat-icon.transport {
+    background-color: #2196f3;
+}
+
+.stat-icon.vacation {
+    background-color: #9c27b0;
+}
+
+.stat-icon.paid-vacation {
+    background-color: #3f51b5;
+}
+
+/* Onglets */
+.details-tabs {
+    padding: 1.5rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.tab-navigation {
+    display: flex;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+}
+
+.tab-button {
+    padding: 0.75rem 1.5rem;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #6c757d;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tab-button.active {
+    color: #4CAF50;
+    border-bottom-color: #4CAF50;
+}
+
+.tab-button:hover:not(.active) {
+    color: #212529;
+    border-bottom-color: #e9ecef;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Tableau responsive */
+.responsive-table {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+td {
+    border-bottom: 1px solid #e9ecef;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+/* Texte aligné */
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* Hover sur les lignes */
+.expandable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.expandable-row:hover {
+    background-color: #f8f9fa;
+}
+
+/* Détails des semaines */
+.week-details {
+    display: none;
+    background-color: #f8f9fa;
+}
+
+.week-details td {
+    padding: 0.5rem 1rem;
+}
+
+.detail-days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.detail-day {
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    border: 1px solid #e9ecef;
+}
+
+.detail-day.sunday {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+}
+
+.day-date {
+    font-weight: 600;
+    color: #495057;
+}
+
+.day-hours {
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Cartes des jours */
+.day-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.day-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.day-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.day-card.sunday {
+    border-left: 4px solid #ff9800;
+}
+
+.day-card.transport {
+    border-left: 4px solid #2196f3;
+}
+
+.day-card.vacation {
+    border-left: 4px solid #9c27b0;
+}
+
+.day-card.paid-vacation {
+    border-left: 4px solid #3f51b5;
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.day-date {
+    font-weight: 600;
+    color: #212529;
+}
+
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+}
+
+.type-badge i {
+    margin-right: 0.25rem;
+}
+
+.type-badge.sunday {
+    background-color: #ff9800;
+}
+
+.type-badge.transport {
+    background-color: #2196f3;
+}
+
+.type-badge.vacation {
+    background-color: #9c27b0;
+}
+
+.type-badge.paid-vacation {
+    background-color: #3f51b5;
+}
+
+.type-badge.normal {
+    background-color: #6c757d;
+}
+
+.day-hours {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+    color: #495057;
+}
+
+.day-salary {
+    font-weight: 600;
+    color: #4CAF50;
+}
+
+/* Sections spéciales */
+.special-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.special-section h5 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #212529;
+    font-weight: 600;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+}
+
+.special-section h5 i {
+    margin-right: 0.5rem;
+}
+
+.transport-section h5 i {
+    color: #2196f3;
+}
+
+.vacation-section h5 i {
+    color: #9c27b0;
+}
+
+.paid-vacation-section h5 i {
+    color: #3f51b5;
+}
+
+.special-data {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.data-item {
+    text-align: center;
+    padding: 0.75rem;
+    background-color: white;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.data-item.total {
+    background-color: #e8f5e9;
+    border-color: #c8e6c9;
+}
+
+.data-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.data-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.data-item.total .data-value {
+    color: #4CAF50;
+}
+
+/* Actions de rapport */
+.report-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.print-button {
+    background-color: #f8f9fa;
+    color: #495057;
+    border: 1px solid #ced4da;
+}
+
+.print-button:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.export-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.export-button:hover {
+    background-color: #3e8e41;
+}
+
+/* Message no results */
+.no-results {
+    padding: 3rem;
+    text-align: center;
+}
+
+.no-results-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 5rem;
+    height: 5rem;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-size: 2rem;
+    margin: 0 auto 1.5rem;
+}
+
+.no-results h3 {
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.no-results p {
+    color: #6c757d;
+}
+
+/* Media queries */
+@media (max-width: 992px) {
+    .special-data {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .data-item.total {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 768px) {
+    .employee-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .salary-badge {
+        margin-top: 1rem;
+        padding: 0.75rem 1rem;
+        text-align: center;
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .special-data {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-item.total {
+        grid-column: span 1;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+    }
+    
+    .action-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .day-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .tab-navigation {
+        gap: 0.5rem;
+    }
+    
+    .tab-button {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .salary-calculator-container,
+    .salary-calculator-container * {
+        visibility: visible;
+    }
+    
+    .salary-calculator-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    .tab-navigation,
+    .report-actions,
+    .selection-form {
+        display: none !important;
+    }
+    
+    .tab-content {
+        display: block !important;
+    }
+    
+    .results-container {
+        box-shadow: none;
+        border: none;
+    }
+}
+</style>
+
+<script>
+// JavaScript pour gérer les interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des onglets
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Retirer la classe active de tous les onglets
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Ajouter la classe active à l'onglet cliqué
+            button.classList.add('active');
+            
+            // Afficher le contenu correspondant
+            const tabId = button.dataset.tab;
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+    
+    // Rows expandables pour les détails des semaines
+    const expandableRows = document.querySelectorAll('.expandable-row');
+    
+    expandableRows.forEach(row => {
+        row.addEventListener('click', function() {
+            const weekNum = this.dataset.week;
+            const detailsRow = document.getElementById(`week-details-${weekNum}`);
+            
+            if (detailsRow.style.display === 'table-row') {
+                detailsRow.style.display = 'none';
+                this.classList.remove('expanded');
+            } else {
+                detailsRow.style.display = 'table-row';
+                this.classList.add('expanded');
+            }
+        });
+    });
+});
+</script>
+<style>
+.sunday-bonus {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: #ff9800;
+    margin-left: 0.5rem;
+    font-weight: normal;
+}
+</style>
+{% endblock %}

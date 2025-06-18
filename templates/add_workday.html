@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Ajouter un Nouveau Jour de Travail</h2>
+<form action="{{ url_for('add_workday') }}" method="post">
+    <div class="form-group">
+        <label for="employee_id">Sélectionner l'Employé:</label>
+        <select id="employee_id" name="employee_id" required>
+            {% for employee in employees %}
+                <option value="{{ employee.id }}">{{ employee.full_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="work_date">Date de Travail:</label>
+        <input type="date" id="work_date" name="work_date" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="hours_worked">Heures Travaillées:</label>
+        <input type="number" id="hours_worked" name="hours_worked" required>
+    </div>
+    
+    <div class="form-group">
+        <label>Type de Jour de Travail:</label>
+        <div class="radio-options">
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="regular_day" name="workday_type" value="regular" checked>
+                    Jour de Travail Régulier
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="transport_day" name="workday_type" value="transport">
+                    Jour de Transport <span class="hint">(Toujours payé au taux horaire normal)</span>
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="vacation_day" name="workday_type" value="vacation">
+                    Jour de Congé <span class="hint">(Déduit 1 jour des jours de congé de l'employé)</span>
+                </label>
+            </div>
+            
+            <div class="radio-item">
+                <label>
+                    <input type="radio" id="paid_vacation" name="workday_type" value="paid_vacation">
+                    Jour férié <span class="hint">(Jour férié sans déduire les jours de congé)</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <button type="submit">Ajouter le Jour de Travail</button>
+</form>
+{% endblock %}

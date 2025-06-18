@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Jours de Travail</h2>
+
+<!-- Formulaire de filtre - CONSERVÉ INTACT -->
+<div class="filter-form">
+    <h3>Filtrer les Jours de Travail</h3>
+    <form action="{{ url_for('list_workdays') }}" method="get">
+        <div class="filter-controls">
+            <div class="form-group">
+                <label for="month">Mois:</label>
+                <select name="month" id="month">
+                    <option value="">Tous les Mois</option>
+                    {% for month_num, month_name in months %}
+                        <option value="{{ month_num }}" {% if selected_month == month_num %}selected{% endif %}>{{ month_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="year">Année:</label>
+                <select name="year" id="year">
+                    <option value="">Toutes les Années</option>
+                    {% for year_num in years %}
+                        <option value="{{ year_num }}" {% if selected_year == year_num %}selected{% endif %}>{{ year_num }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="filter_type">Type de Filtre:</label>
+                <select name="filter_type" id="filter_type">
+                    <option value="">Tous les Jours</option>
+                    <option value="workday" {% if filter_type == 'workday' %}selected{% endif %}>Jours de Travail</option>
+                    <option value="transport_day" {% if filter_type == 'transport_day' %}selected{% endif %}>Jours de Transport</option>
+                    <option value="vacation_day" {% if filter_type == 'vacation_day' %}selected{% endif %}>Jours de Congé</option>
+                    <option value="paid_vacation" {% if filter_type == 'paid_vacation' %}selected{% endif %}>Jour férié</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="filter-button">Appliquer le Filtre</button>
+    </form>
+</div>
+
+{% if workdays %}
+<div class="table-container">
+    <!-- Suppression de l'ID de tableau et des attributs de tri -->
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Employé</th>
+                <th>Date de Travail</th>
+                <th>Heures Travaillées</th>
+                <th>Type de jour</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for workday in workdays %}
+            <tr>
+                <td>{{ workday.id }}</td>
+                <td>{{ workday.employee.full_name }}</td>
+                <td>{{ workday.work_date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ workday.hours_worked }}</td>
+                <td>
+                    {% if workday.is_transport_day %}
+                        <span class="tag transport">Transport</span>
+                    {% elif workday.is_paid_vacation %}
+                        <span class="tag holiday">Jour férié</span>
+                    {% elif workday.is_vacation_day %}
+                        <span class="tag vacation">Congé</span>
+                    {% else %}
+                        <span class="tag regular">Normal</span>
+                    {% endif %}
+                    
+                    {% if workday.work_date.weekday() == 6 %}
+                        <span class="tag sunday">Dimanche</span>
+                    {% endif %}
+                </td>
+                <td class="actions">
+                    <a href="{{ url_for('edit_workday', workday_id=workday.id) }}" class="edit-button">Modifier</a>
+                    <a href="{{ url_for('delete_workday', workday_id=workday.id) }}" class="delete-button" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce jour de travail?');">Supprimer</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p>Aucun jour de travail trouvé.</p>
+{% endif %}
+
+<div class="action-buttons">
+    <a href="{{ url_for('add_workday') }}" class="add-button">Ajouter un Jour de Travail</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Suppression de tout le JavaScript de tri -->
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Styles pour les tags de type de jour - CONSERVÉS */
+    .tag {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 500;
+        color: white;
+        margin-right: 5px;
+        margin-bottom: 3px;
+    }
+    
+    .tag.transport { background-color: #2196f3; }
+    .tag.vacation { background-color: #9c27b0; }
+    .tag.holiday { background-color: #3f51b5; }
+    .tag.regular { background-color: #4CAF50; }
+    .tag.sunday { background-color: #ff9800; }
+    
+    /* Style général du tableau - CONSERVÉ */
+    .table-container table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .table-container th {
+        background-color: #f8f9fa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .table-container td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+    }
+    
+    .table-container tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .table-container tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Consistent button styling - CONSERVÉ */
+    button, .edit-button, .delete-button, .save-button, .cancel-button, .add-button {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-weight: 500;
+        text-align: center;
+        transition: background-color 0.2s, transform 0.1s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    button:hover, .edit-button:hover, .delete-button:hover, .save-button:hover, .cancel-button:hover, .add-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    button:active, .edit-button:active, .delete-button:active, .save-button:active, .cancel-button:active, .add-button:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* Optimisation mobile - CONSERVÉE */
+    @media (max-width: 768px) {
+        td.actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px;
+        }
+        
+        .edit-button, .delete-button {
+            width: 100%;
+            margin-right: 0;
+            margin-bottom: 5px;
+        }
+        
+        .inline-form {
+            width: 100%;
+        }
+        
+        .delete-button {
+            width: 100%;
+        }
+        
+        /* Améliorer l'affichage du tableau sur mobile */
+        .table-container {
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block imports %}
+import calendar
+{% endblock %}

@@ -1,0 +1,15 @@
+# filepath: /home/omar-bouattour/Desktop/salarymanagement/.gitignore
+# Environment variables
+.env
+
+# Database files
+*.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Flask stuff
+instance/
+.webassets-cache

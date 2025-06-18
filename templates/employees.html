@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Employés</h2>
+
+{% if employees %}
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nom Complet</th>
+                <th>Salaire Horaire</th>
+                <th>Jours de Congé</th>
+                <th style="width: 150px; text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for employee in employees %}
+            <tr>
+                <td>{{ employee.id }}</td>
+                <td>{{ employee.full_name }}</td>
+                <td>{{ '%d'|format(employee.hourly_salary*1000) }} millimes</td>
+                <td>{{ employee.vacation_days }}</td>
+                <td class="actions">
+                    <a href="{{ url_for('edit_employee', employee_id=employee.id) }}" class="edit-button">Modifier</a>
+                    <a href="{{ url_for('delete_employee', employee_id=employee.id) }}" class="delete-button" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet employé?');">Supprimer</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p>Aucun employé trouvé.</p>
+{% endif %}
+
+<div class="action-buttons">
+    <a href="{{ url_for('add_employee') }}" class="add-button">Ajouter un Employé</a>
+</div>
+{% endblock %}

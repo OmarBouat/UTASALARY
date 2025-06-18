@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Ajouter un Nouvel Employé</h2>
+<form action="{{ url_for('add_employee') }}" method="post">
+    <div class="form-group">
+        <label for="full_name">Nom Complet:</label>
+        <input type="text" id="full_name" name="full_name" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="hourly_salary">Salaire Horaire (millimes):</label>
+        <input type="number" id="hourly_salary" name="hourly_salary" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="vacation_days">Jours de Congé:</label>
+        <input type="number" id="vacation_days" name="vacation_days" value="21">
+    </div>
+    
+    <button type="submit">Ajouter l'Employé</button>
+</form>
+{% endblock %}
